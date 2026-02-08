@@ -11,11 +11,14 @@ import {
 import { ImageProcessType, VideoDuration } from "../types";
 
 // Helper to safely get the API Key
-// Per coding guidelines, we must use process.env.API_KEY exclusively.
 const getAIClient = () => {
-  const apiKey = process.env.API_KEY;
+  // In Vite/Vercel, variables must start with VITE_ to be accessible in the browser
+  // We check import.meta.env.VITE_API_KEY first, then fall back to process.env.API_KEY
+  // @ts-ignore
+  const apiKey = (import.meta.env && import.meta.env.VITE_API_KEY) || process.env.API_KEY;
+  
   if (!apiKey) {
-    throw new Error("API Key is missing. Please set process.env.API_KEY.");
+    throw new Error("API Key is missing. Please set VITE_API_KEY in your Vercel Environment Variables.");
   }
   return new GoogleGenAI({ apiKey });
 };
