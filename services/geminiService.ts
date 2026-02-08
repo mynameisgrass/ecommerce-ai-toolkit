@@ -10,8 +10,15 @@ import {
 } from "../constants";
 import { ImageProcessType, VideoDuration } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Helper to safely get the API Key
+// Per coding guidelines, we must use process.env.API_KEY exclusively.
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set process.env.API_KEY.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 /**
  * Converts a File object to a Base64 string.
@@ -40,6 +47,7 @@ export const generateImageSeparation = async (
     : PROMPT_SEPARATE_PRODUCT;
 
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: MODEL_IMAGE_GEN,
       contents: {
@@ -63,15 +71,17 @@ export const generateImageSeparation = async (
     });
 
     // Extract image from response
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
       }
     }
     throw new Error("No image generated.");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error (Image):", error);
-    throw new Error("Failed to generate image. Please try again.");
+    throw new Error(error.message || "Failed to generate image. Please try again.");
   }
 };
 
@@ -91,6 +101,7 @@ export const generateVideoPrompt = async (
   `;
 
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: MODEL_TEXT_VISION,
       contents: {
@@ -109,14 +120,15 @@ export const generateVideoPrompt = async (
     });
 
     return response.text || "No text generated.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error (Video Prompt):", error);
-    throw new Error("Failed to generate video prompt.");
+    throw new Error(error.message || "Failed to generate video prompt.");
   }
 };
 
 export const generateSalesScript = async (productDescription: string): Promise<string> => {
   try {
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: MODEL_TEXT_VISION,
       contents: {
@@ -129,8 +141,8 @@ export const generateSalesScript = async (productDescription: string): Promise<s
     });
 
     return response.text || "No script generated.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error (Sales Script):", error);
-    throw new Error("Failed to generate sales script.");
+    throw new Error(error.message || "Failed to generate sales script.");
   }
 };
